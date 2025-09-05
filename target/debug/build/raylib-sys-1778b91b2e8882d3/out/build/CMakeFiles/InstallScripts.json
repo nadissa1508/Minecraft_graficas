@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/build/cmake_install.cmake",
+		"C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/build/raylib/cmake_install.cmake",
+		"C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/build/raylib/external/glfw/cmake_install.cmake",
+		"C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/build/raylib/external/glfw/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

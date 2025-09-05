@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\nadis\graficas-exercises\minecraft-practice\target\debug\build\raylib-sys-1778b91b2e8882d3\out\build\CMakeFiles\09bb0ac99b582c2ac9e2baaa1880675f\RUN_TESTS_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{BE27D90A-1579-3383-8395-9CF06135BDA2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
