@@ -1,7 +1,0 @@
-C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/lib/raylib.lib
-C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/include/raylib.h
-C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/include/rlgl.h
-C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/include/raymath.h
-C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/lib/pkgconfig/raylib.pc
-C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/lib/cmake/raylib/raylib-config-version.cmake
-C:/Users/nadis/graficas-exercises/minecraft-practice/target/debug/build/raylib-sys-1778b91b2e8882d3/out/lib/cmake/raylib/raylib-config.cmake
