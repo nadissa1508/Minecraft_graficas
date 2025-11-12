@@ -58,6 +58,7 @@ impl Triangle {
 pub struct Mesh {
     pub triangles: Vec<Triangle>,
     pub position: Vec3,
+    pub scale: f32,
     pub material: Material,
 }
 
@@ -66,40 +67,110 @@ impl Mesh {
         Self {
             triangles: Vec::new(),
             position,
+            scale: 1.0,
             material,
         }
     }
 
-    // TODO: Implement actual .OBJ file loading
-    pub fn load_obj(_path: &str, position: Vec3, material: Material) -> Self {
-        // Placeholder: Create a simple pyramid
-        let triangles = vec![
-            Triangle::new(
-                Vec3::new(-0.5, 0.0, -0.5),
-                Vec3::new(0.5, 0.0, -0.5),
-                Vec3::new(0.0, 1.0, 0.0),
-            ),
-            Triangle::new(
-                Vec3::new(0.5, 0.0, -0.5),
-                Vec3::new(0.5, 0.0, 0.5),
-                Vec3::new(0.0, 1.0, 0.0),
-            ),
-            Triangle::new(
-                Vec3::new(0.5, 0.0, 0.5),
-                Vec3::new(-0.5, 0.0, 0.5),
-                Vec3::new(0.0, 1.0, 0.0),
-            ),
-            Triangle::new(
-                Vec3::new(-0.5, 0.0, 0.5),
-                Vec3::new(-0.5, 0.0, -0.5),
-                Vec3::new(0.0, 1.0, 0.0),
-            ),
-        ];
+    /// Load an OBJ file and create a mesh with scale
+    pub fn load_obj(path: &str, position: Vec3, scale: f32, material: Material) -> Self {
+        println!("Loading OBJ model: {} (scale: {})", path, scale);
 
-        Self {
-            triangles,
-            position,
-            material,
+        // Try to load the OBJ file using tobj
+        let load_options = tobj::LoadOptions {
+            single_index: true,
+            triangulate: true,
+            ..Default::default()
+        };
+
+        match tobj::load_obj(path, &load_options) {
+            Ok((models, _materials)) => {
+                let mut triangles = Vec::new();
+
+                // Process each model in the OBJ file
+                for model in models {
+                    let mesh = &model.mesh;
+                    let positions = &mesh.positions;
+                    let indices = &mesh.indices;
+
+                    println!("  Model '{}': {} vertices, {} triangles",
+                        model.name,
+                        positions.len() / 3,
+                        indices.len() / 3
+                    );
+
+                    // Create triangles from indices
+                    for i in (0..indices.len()).step_by(3) {
+                        let idx0 = indices[i] as usize;
+                        let idx1 = indices[i + 1] as usize;
+                        let idx2 = indices[i + 2] as usize;
+
+                        let v0 = Vec3::new(
+                            positions[idx0 * 3] * scale,
+                            positions[idx0 * 3 + 1] * scale,
+                            positions[idx0 * 3 + 2] * scale,
+                        );
+
+                        let v1 = Vec3::new(
+                            positions[idx1 * 3] * scale,
+                            positions[idx1 * 3 + 1] * scale,
+                            positions[idx1 * 3 + 2] * scale,
+                        );
+
+                        let v2 = Vec3::new(
+                            positions[idx2 * 3] * scale,
+                            positions[idx2 * 3 + 1] * scale,
+                            positions[idx2 * 3 + 2] * scale,
+                        );
+
+                        triangles.push(Triangle::new(v0, v1, v2));
+                    }
+                }
+
+                println!("Successfully loaded {} triangles", triangles.len());
+
+                Self {
+                    triangles,
+                    position,
+                    scale,
+                    material,
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to load OBJ file '{}': {}", path, e);
+                eprintln!("Creating fallback pyramid mesh");
+
+                // Fallback: Create a simple pyramid (already scaled)
+                let triangles = vec![
+                    Triangle::new(
+                        Vec3::new(-0.5 * scale, 0.0, -0.5 * scale),
+                        Vec3::new(0.5 * scale, 0.0, -0.5 * scale),
+                        Vec3::new(0.0, 1.0 * scale, 0.0),
+                    ),
+                    Triangle::new(
+                        Vec3::new(0.5 * scale, 0.0, -0.5 * scale),
+                        Vec3::new(0.5 * scale, 0.0, 0.5 * scale),
+                        Vec3::new(0.0, 1.0 * scale, 0.0),
+                    ),
+                    Triangle::new(
+                        Vec3::new(0.5 * scale, 0.0, 0.5 * scale),
+                        Vec3::new(-0.5 * scale, 0.0, 0.5 * scale),
+                        Vec3::new(0.0, 1.0 * scale, 0.0),
+                    ),
+                    Triangle::new(
+                        Vec3::new(-0.5 * scale, 0.0, 0.5 * scale),
+                        Vec3::new(-0.5 * scale, 0.0, -0.5 * scale),
+                        Vec3::new(0.0, 1.0 * scale, 0.0),
+                    ),
+                ];
+
+                Self {
+                    triangles,
+                    position,
+                    scale,
+                    material,
+                }
+            }
         }
     }
 

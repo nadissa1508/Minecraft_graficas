@@ -226,6 +226,7 @@ impl Clone for crate::obj_loader::Mesh {
         Self {
             triangles: self.triangles.iter().map(|t| t.clone()).collect(),
             position: self.position,
+            scale: self.scale,
             material: self.material.clone(),
         }
     }

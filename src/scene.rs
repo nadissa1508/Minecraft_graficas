@@ -30,8 +30,9 @@ impl Scene {
 
     pub fn build_cherry_tree_diorama(&mut self) {
         // Create ground plane with grass blocks (different textures per face)
-        for x in -5..5 {
-            for z in -5..5 {
+        // Asymmetric: more grass in front of house (negative z), less behind axolotl (positive z)
+        for x in -10..10 {
+            for z in -15..6 {
                 // Top face: grass texture
                 let grass_top = Material::new(Color::new(0.3, 0.7, 0.3))
                     .with_texture(Texture::load("assets/textures/grass.jpg"));
@@ -127,10 +128,152 @@ impl Scene {
             glass_mat,
         ));
 
-        // TODO: Load axolotl model
-        // let axolotl_mat = Material::new(Color::new(1.0, 0.7, 0.8));
-        // let axolotl = Mesh::load_obj("assets/models/axolotl.obj", Vec3::new(0.0, 0.5, 3.0), axolotl_mat);
-        // self.meshes.push(axolotl);
+        // Load axolotl model with pink material (smaller size)
+        let axolotl_body_mat = Material::new(Color::new(1.0, 0.7, 0.8)); // Pink/rosado body color
+        let axolotl = Mesh::load_obj(
+            "assets/models/axolotl.obj",
+            Vec3::new(2.0, 0.2, 4.0), // Position: near the tree
+            0.15,                      // Scale: 0.15 = 15% of original size (much smaller!)
+            axolotl_body_mat,
+        );
+        self.meshes.push(axolotl);
+
+        // TODO: Add eyes, mouth, and scales as separate colored cubes or small meshes
+        // Eyes (dark spots)
+        // let eye_mat = Material::new(Color::new(0.1, 0.1, 0.1)); // Dark for eyes
+        // self.cubes.push(Cube::new(Vec3::new(-0.1, 0.6, 3.3), 0.08, eye_mat.clone()));
+        // self.cubes.push(Cube::new(Vec3::new(0.1, 0.6, 3.3), 0.08, eye_mat));
+
+        // Mouth (darker pink)
+        // let mouth_mat = Material::new(Color::new(0.8, 0.4, 0.5));
+        // self.cubes.push(Cube::new(Vec3::new(0.0, 0.4, 3.4), 0.05, mouth_mat));
+
+        // === BUILD A HOUSE ===
+        self.build_house();
+    }
+
+    fn build_house(&mut self) {
+        // House materials
+        let wall_mat = Material::new(Color::new(0.6, 0.4, 0.3))
+            .with_texture(Texture::load("assets/textures/cherry_log.png"));
+
+        let window_mat = Material::new(Color::new(0.8, 0.9, 1.0))
+            .with_texture(Texture::load("assets/textures/glass.png"))
+            .with_transparency(0.8, 1.5)
+            .with_reflectivity(0.1);
+
+        let roof_mat = Material::new(Color::new(0.5, 0.5, 0.5))
+            .with_texture(Texture::load("assets/textures/stone.jpg"));
+
+        let door_mat = Material::new(Color::new(0.5, 0.3, 0.2))
+            .with_texture(Texture::load("assets/textures/cherry_wood.jpg"));
+
+        // House position and size
+        let house_x = -10.0;
+        let house_z = -10.0;
+        let house_width = 7;
+        let house_depth = 7;
+        let house_height = 5;
+
+        // Build floor (optional, grass is already there)
+
+        // Build walls (all 4 sides)
+        for y in 0..house_height {
+            let y_pos = y as f32;
+
+            // Front wall (z = house_z) with door
+            for x in 0..house_width {
+                let x_pos = house_x + x as f32;
+                let is_door = y < 3 && x >= 2 && x <= 4; // Door opening (3 blocks wide, 3 blocks tall)
+
+                if !is_door {
+                    self.cubes.push(Cube::new(
+                        Vec3::new(x_pos, y_pos, house_z),
+                        1.0,
+                        wall_mat.clone(),
+                    ));
+                } else if y == 0 {
+                    // Door block at ground level
+                    self.cubes.push(Cube::new(
+                        Vec3::new(x_pos, y_pos, house_z),
+                        1.0,
+                        door_mat.clone(),
+                    ));
+                }
+            }
+
+            // Back wall (z = house_z + depth) with windows
+            for x in 0..house_width {
+                let x_pos = house_x + x as f32;
+                let is_window = y >= 2 && y <= 3 && (x == 2 || x == 4);
+
+                if is_window {
+                    self.cubes.push(Cube::new(
+                        Vec3::new(x_pos, y_pos, house_z + house_depth as f32 - 1.0),
+                        1.0,
+                        window_mat.clone(),
+                    ));
+                } else {
+                    self.cubes.push(Cube::new(
+                        Vec3::new(x_pos, y_pos, house_z + house_depth as f32 - 1.0),
+                        1.0,
+                        wall_mat.clone(),
+                    ));
+                }
+            }
+
+            // Left wall (x = house_x) with window
+            for z in 1..(house_depth - 1) {
+                let z_pos = house_z + z as f32;
+                let is_window = y >= 2 && y <= 3 && z == 3;
+
+                if is_window {
+                    self.cubes.push(Cube::new(
+                        Vec3::new(house_x, y_pos, z_pos),
+                        1.0,
+                        window_mat.clone(),
+                    ));
+                } else {
+                    self.cubes.push(Cube::new(
+                        Vec3::new(house_x, y_pos, z_pos),
+                        1.0,
+                        wall_mat.clone(),
+                    ));
+                }
+            }
+
+            // Right wall (x = house_x + width) with window
+            for z in 1..(house_depth - 1) {
+                let z_pos = house_z + z as f32;
+                let is_window = y >= 2 && y <= 3 && z == 3;
+
+                if is_window {
+                    self.cubes.push(Cube::new(
+                        Vec3::new(house_x + house_width as f32 - 1.0, y_pos, z_pos),
+                        1.0,
+                        window_mat.clone(),
+                    ));
+                } else {
+                    self.cubes.push(Cube::new(
+                        Vec3::new(house_x + house_width as f32 - 1.0, y_pos, z_pos),
+                        1.0,
+                        wall_mat.clone(),
+                    ));
+                }
+            }
+        }
+
+        // Build roof (flat roof made of stone)
+        let roof_y = house_height as f32;
+        for x in 0..house_width {
+            for z in 0..house_depth {
+                self.cubes.push(Cube::new(
+                    Vec3::new(house_x + x as f32, roof_y, house_z + z as f32),
+                    1.0,
+                    roof_mat.clone(),
+                ));
+            }
+        }
     }
 
     pub fn update_sun_position(&mut self, day_time: f32) {
