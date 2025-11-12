@@ -1,7 +1,7 @@
-# Ignora carpeta de compilación
-/target/
-
-# Ignora backups o archivos temporales
-*.rs.bk
+/target
+.claude/
+Cargo.lock
+*.pdb
 *.swp
-*.lock
+*~
+.DS_Store
