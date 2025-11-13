@@ -147,11 +147,20 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: i32, day_time: f32) -> Color {
             return material.emissive;
         }
 
-        // Ambient lighting (improved with slight blue tint for better water appearance)
-        let ambient = Color::new(0.45, 0.45, 0.52);
+        // Ambient lighting - varies with day/night cycle
+        // Day (day_time=0.0): Bright ambient light
+        // Night (day_time=1.0): Very dark ambient light
+        let day_ambient = Color::new(0.45, 0.45, 0.52);
+        let night_ambient = Color::new(0.05, 0.05, 0.08); // Very dark at night
+        let ambient = day_ambient * (1.0 - day_time) + night_ambient * day_time;
 
         // View direction for specular calculations
         let view_dir = -ray.direction;
+
+        // Sun/moon intensity varies with day/night
+        // During day (day_time=0.0): Full sun intensity
+        // During night (day_time=1.0): Very weak moonlight
+        let celestial_intensity = scene.sun.intensity * (1.0 - day_time * 0.95); // Reduce to 5% at night
 
         // Diffuse lighting from sun
         let light_dir = -scene.sun.direction;
@@ -164,7 +173,7 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: i32, day_time: f32) -> Color {
         let diffuse = if in_shadow {
             Color::black()
         } else {
-            scene.sun.color * (diffuse_strength * scene.sun.intensity)
+            scene.sun.color * (diffuse_strength * celestial_intensity)
         };
 
         // Specular lighting from sun (Blinn-Phong)
@@ -172,7 +181,7 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: i32, day_time: f32) -> Color {
         if !in_shadow && material.specular > 0.0 && diffuse_strength > 0.0 {
             let halfway = (light_dir + view_dir).normalize();
             let spec_strength = normal.dot(&halfway).max(0.0).powf(material.shininess);
-            specular = scene.sun.color * (material.specular * spec_strength * scene.sun.intensity);
+            specular = scene.sun.color * (material.specular * spec_strength * celestial_intensity);
         }
 
         // Add point light contributions (diffuse + specular)

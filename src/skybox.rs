@@ -139,19 +139,19 @@ impl Skybox {
         
         // Only show moon during night (day_time > 0.5)
         if day_time > 0.5 {
-            // Core moon disk
+            // Core moon disk - much dimmer now
             if cos_angle_to_moon >= moon_radius_cos {
                 let t = (cos_angle_to_moon - moon_radius_cos) / (1.0 - moon_radius_cos);
-                // Soft white moon
-                let brightness = t.powf(0.5) * (day_time - 0.5) * 2.0; // Fade in as night begins
-                let moon_disk = Color::new(0.9, 0.9, 1.0) * (3.0 * brightness);
+                // Soft white moon with reduced brightness
+                let brightness = t.powf(0.5) * (day_time - 0.5) * 2.0;
+                let moon_disk = Color::new(0.9, 0.9, 1.0) * (1.0 * brightness); // Reduced from 3.0 to 1.0
                 base_color = base_color + moon_disk;
             }
-            // Moon glow
+            // Moon glow - barely visible
             else if cos_angle_to_moon >= moon_glow_cos {
                 let t = (cos_angle_to_moon - moon_glow_cos) / (moon_radius_cos - moon_glow_cos);
                 let brightness = t.powf(2.0) * (day_time - 0.5) * 2.0;
-                let moon_glow = Color::new(0.7, 0.7, 0.9) * (1.0 * brightness);
+                let moon_glow = Color::new(0.7, 0.7, 0.9) * (0.3 * brightness); // Reduced from 1.0 to 0.3
                 base_color = base_color + moon_glow;
             }
         }
