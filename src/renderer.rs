@@ -3,7 +3,7 @@ use crate::camera::Camera;
 use crate::ray::Ray;
 use crate::color::Color;
 
-const MAX_DEPTH: i32 = 5;
+const MAX_DEPTH: i32 = 8;  // Increased from 5 to 8 for better water transparency/reflection
 
 pub fn render_scene(
     scene: &Scene,
@@ -13,14 +13,15 @@ pub fn render_scene(
     height: i32,
     render_scale: i32,
     use_threading: bool,
+    day_time: f32,
 ) {
     let scaled_width = width / render_scale;
     let scaled_height = height / render_scale;
 
     if use_threading {
-        render_threaded(scene, camera, buffer, width, height, scaled_width, scaled_height, render_scale);
+        render_threaded(scene, camera, buffer, width, height, scaled_width, scaled_height, render_scale, day_time);
     } else {
-        render_single_threaded(scene, camera, buffer, width, height, scaled_width, scaled_height, render_scale);
+        render_single_threaded(scene, camera, buffer, width, height, scaled_width, scaled_height, render_scale, day_time);
     }
 }
 
@@ -33,6 +34,7 @@ fn render_single_threaded(
     scaled_width: i32,
     scaled_height: i32,
     render_scale: i32,
+    day_time: f32,
 ) {
     for sy in 0..scaled_height {
         for sx in 0..scaled_width {
@@ -40,7 +42,7 @@ fn render_single_threaded(
             let v = sy as f32 / scaled_height as f32;
 
             let ray = camera.get_ray(u, v);
-            let color = trace_ray(&ray, scene, 0);
+            let color = trace_ray(&ray, scene, 0, day_time);
 
             // Fill the scaled pixels
             for dy in 0..render_scale {
@@ -66,6 +68,7 @@ fn render_threaded(
     scaled_width: i32,
     scaled_height: i32,
     render_scale: i32,
+    day_time: f32,
 ) {
     use std::sync::{Arc, Mutex};
     use std::thread;
@@ -95,7 +98,7 @@ fn render_threaded(
                     let v = sy as f32 / scaled_height as f32;
 
                     let ray = camera.get_ray(u, v);
-                    let color = trace_ray(&ray, &scene, 0);
+                    let color = trace_ray(&ray, &scene, 0, day_time);
 
                     for dy in 0..render_scale {
                         for dx in 0..render_scale {
@@ -126,7 +129,7 @@ fn render_threaded(
     }
 }
 
-fn trace_ray(ray: &Ray, scene: &Scene, depth: i32) -> Color {
+fn trace_ray(ray: &Ray, scene: &Scene, depth: i32, day_time: f32) -> Color {
     if depth >= MAX_DEPTH {
         return Color::black();
     }
@@ -144,8 +147,11 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: i32) -> Color {
             return material.emissive;
         }
 
-        // Ambient lighting (increased so all surfaces are visible)
-        let ambient = Color::new(0.4, 0.4, 0.45);
+        // Ambient lighting (improved with slight blue tint for better water appearance)
+        let ambient = Color::new(0.45, 0.45, 0.52);
+
+        // View direction for specular calculations
+        let view_dir = -ray.direction;
 
         // Diffuse lighting from sun
         let light_dir = -scene.sun.direction;
@@ -161,14 +167,78 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: i32) -> Color {
             scene.sun.color * (diffuse_strength * scene.sun.intensity)
         };
 
-        let mut color = (ambient + diffuse) * surface_color;
+        // Specular lighting from sun (Blinn-Phong)
+        let mut specular = Color::black();
+        if !in_shadow && material.specular > 0.0 && diffuse_strength > 0.0 {
+            let halfway = (light_dir + view_dir).normalize();
+            let spec_strength = normal.dot(&halfway).max(0.0).powf(material.shininess);
+            specular = scene.sun.color * (material.specular * spec_strength * scene.sun.intensity);
+        }
 
-        // Reflection
-        if material.reflectivity > 0.0 {
+        // Add point light contributions (diffuse + specular)
+        let mut point_light_contribution = Color::black();
+        let mut point_light_specular = Color::black();
+        for point_light in &scene.point_lights {
+            let (light_direction, light_color) = point_light.illuminate(&hit_point);
+
+            // Skip if light is too far or has no contribution
+            if light_color.r <= 0.0 && light_color.g <= 0.0 && light_color.b <= 0.0 {
+                continue;
+            }
+
+            // Calculate diffuse strength for this point light
+            let point_diffuse_strength = normal.dot(&light_direction).max(0.0);
+
+            // Shadow check for this point light
+            let point_shadow_ray = Ray::new(hit_point + normal * 0.001, light_direction);
+            let point_in_shadow = if let Some(shadow_hit) = scene.intersect(&point_shadow_ray) {
+                // Check if the shadow hit is closer than the light source
+                let light_distance = (point_light.position - hit_point).length();
+                shadow_hit.t < light_distance
+            } else {
+                false
+            };
+
+            if !point_in_shadow && point_diffuse_strength > 0.0 {
+                // Diffuse contribution
+                point_light_contribution = point_light_contribution + light_color * point_diffuse_strength;
+
+                // Specular contribution (Blinn-Phong)
+                if material.specular > 0.0 {
+                    let halfway = (light_direction + view_dir).normalize();
+                    let spec_strength = normal.dot(&halfway).max(0.0).powf(material.shininess);
+                    point_light_specular = point_light_specular + light_color * (material.specular * spec_strength);
+                }
+            }
+        }
+
+        let mut color = (ambient + diffuse + point_light_contribution) * surface_color + specular + point_light_specular;
+
+        // Calculate Fresnel effect for more realistic reflections (especially for water)
+        let cos_theta = view_dir.dot(&normal).abs().max(0.0).min(1.0);
+        
+        // Schlick's approximation for Fresnel reflectance
+        let r0 = if material.refractive_index > 1.0 {
+            ((1.0 - material.refractive_index) / (1.0 + material.refractive_index)).powi(2)
+        } else {
+            0.04 // Default for non-refractive materials
+        };
+        let fresnel = r0 + (1.0 - r0) * (1.0 - cos_theta).powi(5);
+
+        // Reflection (enhanced with Fresnel for transparent materials)
+        if material.reflectivity > 0.0 || material.transparency > 0.0 {
             let reflect_dir = ray.direction.reflect(&normal);
             let reflect_ray = Ray::new(hit_point + normal * 0.001, reflect_dir);
-            let reflect_color = trace_ray(&reflect_ray, scene, depth + 1);
-            color = color * (1.0 - material.reflectivity) + reflect_color * material.reflectivity;
+            let reflect_color = trace_ray(&reflect_ray, scene, depth + 1, day_time);
+
+            // Use Fresnel for transparent materials, otherwise use base reflectivity
+            let effective_reflectivity = if material.transparency > 0.0 {
+                fresnel.max(material.reflectivity)
+            } else {
+                material.reflectivity
+            };
+
+            color = color * (1.0 - effective_reflectivity) + reflect_color * effective_reflectivity;
         }
 
         // Refraction
@@ -176,15 +246,19 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: i32) -> Color {
             let eta = 1.0 / material.refractive_index;
             if let Some(refract_dir) = ray.direction.refract(&normal, eta) {
                 let refract_ray = Ray::new(hit_point - normal * 0.001, refract_dir);
-                let refract_color = trace_ray(&refract_ray, scene, depth + 1);
-                color = color * (1.0 - material.transparency) + refract_color * material.transparency;
+                let refract_color = trace_ray(&refract_ray, scene, depth + 1, day_time);
+
+                // Blend refraction with existing color (accounting for Fresnel in reflection above)
+                let refract_amount = material.transparency * (1.0 - fresnel);
+                color = color * (1.0 - refract_amount) + refract_color * refract_amount;
             }
         }
 
         color.clamp()
     } else {
-        // Sky
-        scene.skybox.sample(ray, 0.0)
+        // Sky - use actual day_time for skybox texture blending
+        // Pass sun parameters so the skybox can render a visible sun disk
+        scene.skybox.sample(ray, day_time, -scene.sun.direction, scene.sun.color, scene.sun.intensity)
     }
 }
 
@@ -203,6 +277,7 @@ impl Clone for Scene {
             cubes: self.cubes.iter().map(|c| c.clone()).collect(),
             meshes: self.meshes.iter().map(|m| m.clone()).collect(),
             sun: self.sun.clone(),
+            point_lights: self.point_lights.iter().map(|l| l.clone()).collect(),
             skybox: self.skybox.clone(),
         }
     }
@@ -260,6 +335,8 @@ impl Clone for crate::skybox::Skybox {
             day_color_horizon: self.day_color_horizon,
             night_color_top: self.night_color_top,
             night_color_horizon: self.night_color_horizon,
+            day_texture: self.day_texture.clone(),
+            night_texture: self.night_texture.clone(),
         }
     }
 }

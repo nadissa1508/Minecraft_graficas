@@ -8,6 +8,7 @@ mod color;
 mod scene;
 mod cube;
 mod light;
+mod point_light;
 mod skybox;
 mod obj_loader;
 mod intersection;
@@ -135,6 +136,7 @@ fn main() {
             HEIGHT,
             render_scale,
             use_threading,
+            day_time,
         );
 
         let mut d = rl.begin_drawing(&thread);
@@ -177,43 +179,48 @@ fn main() {
 
         d.draw_text(&format!("Threading: {}", if use_threading { "ON" } else { "OFF" }), 10, 85, 16, Color::WHITE);
         d.draw_text(&format!("Day Time: {:.2}", day_time), 10, 105, 16, Color::YELLOW);
+        
+        // Show sun direction for debugging
+        d.draw_text(&format!("Sun Dir: ({:.2}, {:.2}, {:.2})", 
+            -scene.sun.direction.x, -scene.sun.direction.y, -scene.sun.direction.z), 
+            10, 125, 14, Color::ORANGE);
 
-        // Controls display
-        d.draw_text("Controls:", 10, HEIGHT - 100, 16, Color::LIGHTGRAY);
-        d.draw_text("WASD: Move | Arrows L/R: Rotate | Arrows U/D: Zoom", 10, HEIGHT - 80, 16, Color::LIGHTGRAY);
-        d.draw_text("Q/E: Up/Down | 1/2/3: Quality | P: Auto-Perf | T: Threading", 10, HEIGHT - 60, 16, Color::LIGHTGRAY);
-        d.draw_text("N: Day/Night", 10, HEIGHT - 40, 16, Color::LIGHTGRAY);
+        // Controls display with better readability
+        d.draw_text("=== CONTROLS ===", 10, HEIGHT - 110, 18, Color::BLACK);
+        d.draw_text("WASD: Look Around (W=Up, S=Down, A=Left, D=Right)", 10, HEIGHT - 85, 16, Color::BLACK);
+        d.draw_text("Arrow UP/DOWN: Zoom In/Out  |  Arrow L/R: Rotate Camera", 10, HEIGHT - 65, 16, Color::BLACK);
+        d.draw_text("Q/E: Move Position Up/Down  |  N: Toggle Day/Night", 10, HEIGHT - 45, 16, Color::BLACK);
+        d.draw_text("1/2/3: Quality  |  P: Auto-Performance  |  T: Threading", 10, HEIGHT - 25, 14, Color::BLACK);
+        d.draw_text("TIP: Press W to look up and see the sun!", WIDTH - 350, HEIGHT - 25, 14, Color::BLACK);
     }
 }
 
 fn handle_camera_input(rl: &RaylibHandle, camera: &mut Camera, delta_time: f32) {
-    // Movement speed (units per second)
-    let move_speed = 5.0;
+    // Camera control speeds (units/degrees per second)
     let rotation_speed = 60.0; // degrees per second
     let zoom_speed = 10.0;
     let vertical_speed = 5.0;
 
-    // Calculate movement amounts based on delta_time for smooth, frame-rate independent movement
-    let move_amount = move_speed * delta_time;
+    // Calculate amounts based on delta_time for smooth, frame-rate independent control
     let rotate_amount = rotation_speed * delta_time;
     let zoom_amount = zoom_speed * delta_time;
     let vertical_amount = vertical_speed * delta_time;
 
-    // === WASD Movement ===
+    // === WASD - Look Around (Camera View Control) ===
     if rl.is_key_down(KeyboardKey::KEY_W) {
-        camera.move_forward(move_amount);
+        camera.rotate_vertical(rotate_amount); // Look UP
     }
     if rl.is_key_down(KeyboardKey::KEY_S) {
-        camera.move_backward(move_amount);
+        camera.rotate_vertical(-rotate_amount); // Look DOWN
     }
     if rl.is_key_down(KeyboardKey::KEY_A) {
-        camera.strafe_left(move_amount);
+        camera.rotate_around_target(-rotate_amount); // Look LEFT
     }
     if rl.is_key_down(KeyboardKey::KEY_D) {
-        camera.strafe_right(move_amount);
+        camera.rotate_around_target(rotate_amount); // Look RIGHT
     }
 
-    // === Arrow Keys - Rotation ===
+    // === Arrow Keys - Rotation and Zoom ===
     if rl.is_key_down(KeyboardKey::KEY_LEFT) {
         camera.rotate_around_target(-rotate_amount);
     }
@@ -223,13 +230,13 @@ fn handle_camera_input(rl: &RaylibHandle, camera: &mut Camera, delta_time: f32) 
 
     // === Arrow Keys - Zoom ===
     if rl.is_key_down(KeyboardKey::KEY_UP) {
-        camera.zoom(-zoom_amount);
+        camera.zoom(-zoom_amount); // Zoom IN
     }
     if rl.is_key_down(KeyboardKey::KEY_DOWN) {
-        camera.zoom(zoom_amount);
+        camera.zoom(zoom_amount); // Zoom OUT
     }
 
-    // === Q/E - Vertical Movement ===
+    // === Q/E - Move Camera Position Up/Down ===
     if rl.is_key_down(KeyboardKey::KEY_Q) {
         camera.move_up(vertical_amount);
     }

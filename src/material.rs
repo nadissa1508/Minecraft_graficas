@@ -6,6 +6,8 @@ pub struct Material {
     pub albedo: Color,
     pub texture: Option<Texture>,
     pub reflectivity: f32,
+    pub specular: f32,        // Specular intensity (0.0 = no specular, 1.0 = full specular)
+    pub shininess: f32,       // Specular shininess/glossiness (higher = sharper highlights)
     pub emissive: Color,
     pub refractive_index: f32,
     pub transparency: f32,
@@ -17,6 +19,8 @@ impl Material {
             albedo,
             texture: None,
             reflectivity: 0.0,
+            specular: 0.0,
+            shininess: 32.0,
             emissive: Color::black(),
             refractive_index: 1.0,
             transparency: 0.0,
@@ -30,6 +34,12 @@ impl Material {
 
     pub fn with_reflectivity(mut self, reflectivity: f32) -> Self {
         self.reflectivity = reflectivity;
+        self
+    }
+
+    pub fn with_specular(mut self, specular: f32, shininess: f32) -> Self {
+        self.specular = specular;
+        self.shininess = shininess;
         self
     }
 

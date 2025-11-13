@@ -174,6 +174,37 @@ impl Mesh {
         }
     }
 
+    /// Rotate all triangles around the Y axis by the given angle (in radians)
+    pub fn rotate_y(&mut self, angle: f32) {
+        let cos_angle = angle.cos();
+        let sin_angle = angle.sin();
+
+        for triangle in &mut self.triangles {
+            // Rotate v0
+            let x0 = triangle.v0.x;
+            let z0 = triangle.v0.z;
+            triangle.v0.x = x0 * cos_angle - z0 * sin_angle;
+            triangle.v0.z = x0 * sin_angle + z0 * cos_angle;
+
+            // Rotate v1
+            let x1 = triangle.v1.x;
+            let z1 = triangle.v1.z;
+            triangle.v1.x = x1 * cos_angle - z1 * sin_angle;
+            triangle.v1.z = x1 * sin_angle + z1 * cos_angle;
+
+            // Rotate v2
+            let x2 = triangle.v2.x;
+            let z2 = triangle.v2.z;
+            triangle.v2.x = x2 * cos_angle - z2 * sin_angle;
+            triangle.v2.z = x2 * sin_angle + z2 * cos_angle;
+
+            // Recalculate normal after rotation
+            let edge1 = triangle.v1 - triangle.v0;
+            let edge2 = triangle.v2 - triangle.v0;
+            triangle.normal = edge1.cross(&edge2).normalize();
+        }
+    }
+
     pub fn intersect(&self, ray: &Ray) -> Option<Intersection> {
         let mut closest_t = f32::INFINITY;
         let mut closest_triangle: Option<&Triangle> = None;

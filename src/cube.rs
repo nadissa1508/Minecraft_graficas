@@ -134,14 +134,17 @@ impl Cube {
         let v: f32;
 
         if normal.x.abs() > 0.5 {
+            // Side faces (X-facing) - flip V coordinate to fix upside-down texture
             u = (local.z + half_size) / self.size;
-            v = (local.y + half_size) / self.size;
+            v = 1.0 - (local.y + half_size) / self.size;
         } else if normal.y.abs() > 0.5 {
+            // Top/bottom faces (Y-facing) - normal UV mapping
             u = (local.x + half_size) / self.size;
             v = (local.z + half_size) / self.size;
         } else {
+            // Side faces (Z-facing) - flip V coordinate to fix upside-down texture
             u = (local.x + half_size) / self.size;
-            v = (local.y + half_size) / self.size;
+            v = 1.0 - (local.y + half_size) / self.size;
         }
 
         (u, v)
