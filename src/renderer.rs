@@ -331,12 +331,18 @@ impl Clone for crate::light::DirectionalLight {
 impl Clone for crate::skybox::Skybox {
     fn clone(&self) -> Self {
         Self {
-            right: self.right.clone(),
-            left: self.left.clone(),
-            top: self.top.clone(),
-            bottom: self.bottom.clone(),
-            front: self.front.clone(),
-            back: self.back.clone(),
+            right_day: self.right_day.clone(),
+            left_day: self.left_day.clone(),
+            top_day: self.top_day.clone(),
+            bottom_day: self.bottom_day.clone(),
+            front_day: self.front_day.clone(),
+            back_day: self.back_day.clone(),
+            right_night: self.right_night.clone(),
+            left_night: self.left_night.clone(),
+            top_night: self.top_night.clone(),
+            bottom_night: self.bottom_night.clone(),
+            front_night: self.front_night.clone(),
+            back_night: self.back_night.clone(),
         }
     }
 }

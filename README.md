@@ -6,15 +6,14 @@ A Minecraft-style diorama renderer using ray tracing, implemented in Rust with t
 
 - Real-time ray tracing with reflections and refractions
 - Minecraft-style voxel rendering
-- Cherry tree diorama scene
-- Dynamic day/night cycle
+- Cherry tree diorama scene with axolotl and pond
+- **Dynamic day/night cycle with visible sun and moon**
 - Adjustable quality levels (Low, Medium, High)
 - Multithreading support for improved performance
 - Interactive orbital camera controls
 - Material system with:
   - Textured surfaces
-  - Emissive blocks (lanterns)
-  - Transparent/refractive materials (water, glass)
+  - Transparent/refractive materials (water, glass, grass) with Fresnel effects
   - Reflective materials
 
 ## Controls
@@ -44,6 +43,33 @@ cargo build --release
 cargo run --release
 ```
 
+## Rubric Requirements
+
+1. **Day/night cycle with visible sun** - Implemented in `src/skybox.rs` and `src/main.rs`
+   - Sun/moon rendering in skybox with day_time control (N key)
+
+2. **Multithreading** - Implemented in `src/renderer.rs`
+   - 4 worker threads with std::thread (toggle with T key)
+
+3. **Camera rotation and zoom** - Implemented in `src/camera.rs`
+   - Orbital rotation with arrow keys, zoom with Q/E, safe angle/distance clamping
+
+4. **Four materials with full parameters** - Implemented in `src/scene.rs` and `src/material.rs`
+   - **Stone**: texture (stone.jpg), albedo, specular, reflectivity
+   - **Glass**: texture (glass.png), albedo, specular, reflectivity, transparency (0.9), IOR (1.5)
+   - **Water**: texture (water.jpeg), albedo, specular, reflectivity, transparency (0.85), IOR (1.33)
+   - **Grass**: texture (grass.jpg), albedo, specular, reflectivity
+
+5. **Reflection implementation** - Implemented in `src/renderer.rs`
+   - Fresnel-based reflection with effective_reflectivity calculation
+
+6. **3D OBJ model loading** - Implemented in `src/obj_loader.rs`
+   - Axolotl mesh loaded from `assets/models/axolotl.obj`
+
+7. **Skybox with textures** - Implemented in `src/skybox.rs`
+   - Cubemap with 6 texture faces from `assets/skybox/`
+
+
 ## Project Structure
 
 ```
@@ -52,22 +78,24 @@ minecraft-raytracer/
 ├── README.md
 ├── assets/
 │   ├── models/
-│   │   └── axolotl.obj          (TODO)
+│   │   └── axolotl.obj          
 │   ├── textures/
-│   │   ├── cherry_wood.png      (TODO)
-│   │   ├── cherry_leaves.png    (TODO)
-│   │   ├── grass.png            (TODO)
-│   │   ├── stone.png            (TODO)
-│   │   ├── water.png            (TODO)
-│   │   ├── glass.png            (TODO)
-│   │   └── emissive_lantern.png (TODO)
+│   │   ├── cherry_wood.jpg      
+│   │   ├── cherry_leaves.png    
+│   │   ├── cherry_log.png       
+│   │   ├── grass.jpg            
+│   │   ├── grass_side.jpg       
+│   │   ├── dirt.jpg             
+│   │   ├── stone.jpg            
+│   │   ├── water.jpeg           
+│   │   ├── glass.png            
+│   │   ├── wood.png             
+│   │   ├── torch.png            
+│   │   └── emissive_lantern.png 
 │   └── skybox/
-│       ├── right.png            (TODO)
-│       ├── left.png             (TODO)
-│       ├── top.png              (TODO)
-│       ├── bottom.png           (TODO)
-│       ├── front.png            (TODO)
-│       └── back.png             (TODO)
+│       ├── top.jpeg             
+│       ├── bottom.jpg           
+│       └── side.jpeg            
 └── src/
     ├── main.rs          - Game loop and window management
     ├── camera.rs        - Orbital camera controls
@@ -99,29 +127,23 @@ minecraft-raytracer/
 - **color.rs**: Color structure with arithmetic operations and raylib conversion
 - **camera.rs**: Orbital camera with rotation, vertical movement, and zoom controls
 - **light.rs**: Directional and point lights
-- **skybox.rs**: Gradient skybox with day/night cycle blending
+- **skybox.rs**: Cubemap skybox with day/night cycle and sun/moon rendering
 - **utils.rs**: Vec3 math library with dot, cross, normalization, reflection, and refraction
 
 ## Implementation Status
 
 ### Completed
-- Core ray tracing engine
+- Core ray tracing engine with Fresnel effects
 - Voxel cube rendering
-- Material system (albedo, reflective, emissive, transparent)
-- Orbital camera system
-- Multithreading support
-- Day/night cycle
-- Cherry tree diorama scene
-- Quality level adjustments
-
-### TODO
-- Load actual texture files (currently uses placeholder checkerboard)
-- Load OBJ models (currently uses placeholder pyramid)
-- Implement skybox cubemap loading
-- Add anti-aliasing
-- Optimize ray-cube intersection
-- Add more block types
-- Implement BVH acceleration structure
+- Material system (albedo, reflective, transparent with Fresnel)
+- Orbital camera system with crash-safe clamping
+- Multithreading support (4 threads)
+- Day/night cycle with visible sun and moon
+- Cherry tree diorama scene with pond, house, and axolotl
+- Quality level adjustments with auto-performance scaling
+- Water with realistic transparency and reflection
+- **Skybox with texture cubemap**
+- **OBJ model loading (axolotl mesh)**
 
 ## Performance Notes
 
@@ -131,8 +153,6 @@ minecraft-raytracer/
   - High: 1x (native resolution)
 
 - Multithreading uses 4 worker threads
-- Maximum ray bounce depth: 5
+- Maximum ray bounce depth: 8
 
-## License
 
-This project is provided as-is for educational purposes.

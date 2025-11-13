@@ -3,25 +3,42 @@ use crate::ray::Ray;
 use crate::texture::Texture;
 
 pub struct Skybox {
-    // Cubemap textures (6 faces)
-    pub right: Texture,   // +X
-    pub left: Texture,    // -X
-    pub top: Texture,     // +Y
-    pub bottom: Texture,  // -Y
-    pub front: Texture,   // +Z
-    pub back: Texture,    // -Z
+    // Cubemap textures - Day (6 faces)
+    pub right_day: Texture,   // +X
+    pub left_day: Texture,    // -X
+    pub top_day: Texture,     // +Y
+    pub bottom_day: Texture,  // -Y
+    pub front_day: Texture,   // +Z
+    pub back_day: Texture,    // -Z
+    
+    // Cubemap textures - Night (6 faces)
+    pub right_night: Texture,
+    pub left_night: Texture,
+    pub top_night: Texture,
+    pub bottom_night: Texture,
+    pub front_night: Texture,
+    pub back_night: Texture,
 }
 
 impl Skybox {
     pub fn new() -> Self {
-        // Load the 6 cubemap face textures from assets/skybox/
+        // Load the cubemap face textures from assets/skybox/
         Self {
-            right: Texture::load("assets/skybox/side.jpeg"),
-            left: Texture::load("assets/skybox/side.jpeg"),
-            top: Texture::load("assets/skybox/top.jpeg"),
-            bottom: Texture::load("assets/skybox/bottom.jpg"),
-            front: Texture::load("assets/skybox/side.jpeg"),
-            back: Texture::load("assets/skybox/side.jpeg"),
+            // Day textures
+            right_day: Texture::load("assets/skybox/side.jpeg"),
+            left_day: Texture::load("assets/skybox/side.jpeg"),
+            top_day: Texture::load("assets/skybox/top.jpeg"),
+            bottom_day: Texture::load("assets/skybox/bottom.jpg"),
+            front_day: Texture::load("assets/skybox/side.jpeg"),
+            back_day: Texture::load("assets/skybox/side.jpeg"),
+            
+            // Night textures (create these files or reuse day textures as fallback)
+            right_night: Texture::load("assets/skybox/side_night.jpeg"),
+            left_night: Texture::load("assets/skybox/side_night.jpeg"),
+            top_night: Texture::load("assets/skybox/top_night.jpeg"),
+            bottom_night: Texture::load("assets/skybox/bottom_night.jpg"),
+            front_night: Texture::load("assets/skybox/side_night.jpeg"),
+            back_night: Texture::load("assets/skybox/side_night.jpeg"),
         }
     }
 
@@ -35,18 +52,18 @@ impl Skybox {
         let abs_y = direction.y.abs();
         let abs_z = direction.z.abs();
         
-        let (u, v, texture) = if abs_x >= abs_y && abs_x >= abs_z {
+        let (u, v, texture_day, texture_night) = if abs_x >= abs_y && abs_x >= abs_z {
             // X is dominant
             if direction.x > 0.0 {
                 // Right face (+X)
                 let u = (-direction.z / abs_x + 1.0) * 0.5;
                 let v = (-direction.y / abs_x + 1.0) * 0.5;
-                (u, v, &self.right)
+                (u, v, &self.right_day, &self.right_night)
             } else {
                 // Left face (-X)
                 let u = (direction.z / abs_x + 1.0) * 0.5;
                 let v = (-direction.y / abs_x + 1.0) * 0.5;
-                (u, v, &self.left)
+                (u, v, &self.left_day, &self.left_night)
             }
         } else if abs_y >= abs_x && abs_y >= abs_z {
             // Y is dominant
@@ -54,12 +71,12 @@ impl Skybox {
                 // Top face (+Y)
                 let u = (direction.x / abs_y + 1.0) * 0.5;
                 let v = (direction.z / abs_y + 1.0) * 0.5;
-                (u, v, &self.top)
+                (u, v, &self.top_day, &self.top_night)
             } else {
                 // Bottom face (-Y)
                 let u = (direction.x / abs_y + 1.0) * 0.5;
                 let v = (-direction.z / abs_y + 1.0) * 0.5;
-                (u, v, &self.bottom)
+                (u, v, &self.bottom_day, &self.bottom_night)
             }
         } else {
             // Z is dominant
@@ -67,26 +84,23 @@ impl Skybox {
                 // Front face (+Z)
                 let u = (direction.x / abs_z + 1.0) * 0.5;
                 let v = (-direction.y / abs_z + 1.0) * 0.5;
-                (u, v, &self.front)
+                (u, v, &self.front_day, &self.front_night)
             } else {
                 // Back face (-Z)
                 let u = (-direction.x / abs_z + 1.0) * 0.5;
                 let v = (-direction.y / abs_z + 1.0) * 0.5;
-                (u, v, &self.back)
+                (u, v, &self.back_day, &self.back_night)
             }
         };
         
-        // Sample the texture
-        let mut base_color = texture.sample(u, v);
+        // Sample both day and night textures
+        let day_color = texture_day.sample(u, v);
+        let night_color = texture_night.sample(u, v);
         
-        // Apply day/night tinting
-        // During day (day_time = 0), keep original colors
-        // During night (day_time = 1), darken and add blue tint
-        if day_time > 0.0 {
-            let night_tint = Color::new(0.1, 0.1, 0.2) * day_time;
-            let darken = 1.0 - (day_time * 0.8); // Darken by up to 80% at full night
-            base_color = base_color * darken + night_tint;
-        }
+        // Blend between day and night based on day_time
+        // day_time = 0.0 -> full day
+        // day_time = 1.0 -> full night
+        let mut base_color = day_color * (1.0 - day_time) + night_color * day_time;
 
         // --- Draw VISIBLE SUN and MOON in the skybox ---
         let sun_dir = sun_dir.normalize();
