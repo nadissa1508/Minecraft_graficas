@@ -3,6 +3,7 @@
 A Minecraft-style diorama renderer using ray tracing, implemented in Rust with the Raylib library for window and display management.
 
 ## Video
+https://youtu.be/jiv-HiB3ero
 
 ## diorama
 
