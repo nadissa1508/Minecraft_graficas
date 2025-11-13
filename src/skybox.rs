@@ -1,103 +1,91 @@
-use crate::utils::lerp;
 use crate::color::Color;
 use crate::ray::Ray;
 use crate::texture::Texture;
 
 pub struct Skybox {
-    pub day_color_top: Color,
-    pub day_color_horizon: Color,
-    pub night_color_top: Color,
-    pub night_color_horizon: Color,
-    pub day_texture: Option<Texture>,    // Day skybox texture
-    pub night_texture: Option<Texture>,  // Night skybox texture
+    // Cubemap textures (6 faces)
+    pub right: Texture,   // +X
+    pub left: Texture,    // -X
+    pub top: Texture,     // +Y
+    pub bottom: Texture,  // -Y
+    pub front: Texture,   // +Z
+    pub back: Texture,    // -Z
 }
 
 impl Skybox {
     pub fn new() -> Self {
-        // Create procedural gradient textures for day and night skyboxes
-        // This satisfies the "skybox with textures" requirement
-        let day_texture = Texture::create_day_skybox();
-        let night_texture = Texture::create_night_skybox();
-
+        // Load the 6 cubemap face textures from assets/skybox/
         Self {
-            day_color_top: Color::new(0.5, 0.7, 1.0),
-            day_color_horizon: Color::new(0.8, 0.9, 1.0),
-            night_color_top: Color::new(0.02, 0.02, 0.1),
-            night_color_horizon: Color::new(0.1, 0.1, 0.2),
-            day_texture: Some(day_texture),
-            night_texture: Some(night_texture),
+            right: Texture::load("assets/skybox/side.jpeg"),
+            left: Texture::load("assets/skybox/side.jpeg"),
+            top: Texture::load("assets/skybox/top.jpeg"),
+            bottom: Texture::load("assets/skybox/bottom.jpg"),
+            front: Texture::load("assets/skybox/side.jpeg"),
+            back: Texture::load("assets/skybox/side.jpeg"),
         }
     }
 
-    /// Sample the skybox using equirectangular projection
-    /// Converts ray direction to spherical coordinates (u, v) and samples texture
-    pub fn sample(&self, ray: &Ray, day_time: f32, sun_dir: crate::utils::Vec3, sun_color: Color, sun_intensity: f32) -> Color {
+    /// Sample the skybox cubemap based on ray direction
+    /// This uses the standard cubemap sampling algorithm
+    pub fn sample(&self, ray: &Ray, day_time: f32, sun_dir: crate::utils::Vec3, _sun_color: Color, _sun_intensity: f32) -> Color {
         let direction = ray.direction.normalize();
-
-        // Base sky color (from textures or procedural gradient)
-        let mut base_color: Color;
-
-        // If textures are available, use them
-        if self.day_texture.is_some() || self.night_texture.is_some() {
-            // Convert direction to spherical coordinates
-            // u = atan2(x, z) / (2*PI) + 0.5  // Horizontal angle (0 to 1)
-            // v = asin(y) / PI + 0.5          // Vertical angle (0 to 1)
-
-            let u = (direction.z.atan2(direction.x) / (2.0 * std::f32::consts::PI)) + 0.5;
-            let v = (direction.y.asin() / std::f32::consts::PI) + 0.5;
-
-            // Sample day and night textures
-            let day_color = if let Some(ref tex) = self.day_texture {
-                tex.sample(u, v)
+        
+        // Determine which cube face to sample based on the largest component
+        let abs_x = direction.x.abs();
+        let abs_y = direction.y.abs();
+        let abs_z = direction.z.abs();
+        
+        let (u, v, texture) = if abs_x >= abs_y && abs_x >= abs_z {
+            // X is dominant
+            if direction.x > 0.0 {
+                // Right face (+X)
+                let u = (-direction.z / abs_x + 1.0) * 0.5;
+                let v = (-direction.y / abs_x + 1.0) * 0.5;
+                (u, v, &self.right)
             } else {
-                // Fallback to procedural day color
-                let t = (direction.y + 1.0) / 2.0;
-                Color::new(
-                    lerp(self.day_color_horizon.r, self.day_color_top.r, t),
-                    lerp(self.day_color_horizon.g, self.day_color_top.g, t),
-                    lerp(self.day_color_horizon.b, self.day_color_top.b, t),
-                )
-            };
-
-            let night_color = if let Some(ref tex) = self.night_texture {
-                tex.sample(u, v)
+                // Left face (-X)
+                let u = (direction.z / abs_x + 1.0) * 0.5;
+                let v = (-direction.y / abs_x + 1.0) * 0.5;
+                (u, v, &self.left)
+            }
+        } else if abs_y >= abs_x && abs_y >= abs_z {
+            // Y is dominant
+            if direction.y > 0.0 {
+                // Top face (+Y)
+                let u = (direction.x / abs_y + 1.0) * 0.5;
+                let v = (direction.z / abs_y + 1.0) * 0.5;
+                (u, v, &self.top)
             } else {
-                // Fallback to procedural night color
-                let t = (direction.y + 1.0) / 2.0;
-                Color::new(
-                    lerp(self.night_color_horizon.r, self.night_color_top.r, t),
-                    lerp(self.night_color_horizon.g, self.night_color_top.g, t),
-                    lerp(self.night_color_horizon.b, self.night_color_top.b, t),
-                )
-            };
-
-            // Blend between day and night based on time
-            base_color = Color::new(
-                lerp(day_color.r, night_color.r, day_time),
-                lerp(day_color.g, night_color.g, day_time),
-                lerp(day_color.b, night_color.b, day_time),
-            );
+                // Bottom face (-Y)
+                let u = (direction.x / abs_y + 1.0) * 0.5;
+                let v = (-direction.z / abs_y + 1.0) * 0.5;
+                (u, v, &self.bottom)
+            }
         } else {
-            // Fallback to procedural colors if no textures
-            let t = (direction.y + 1.0) / 2.0;
-
-            let day_color = Color::new(
-                lerp(self.day_color_horizon.r, self.day_color_top.r, t),
-                lerp(self.day_color_horizon.g, self.day_color_top.g, t),
-                lerp(self.day_color_horizon.b, self.day_color_top.b, t),
-            );
-
-            let night_color = Color::new(
-                lerp(self.night_color_horizon.r, self.night_color_top.r, t),
-                lerp(self.night_color_horizon.g, self.night_color_top.g, t),
-                lerp(self.night_color_horizon.b, self.night_color_top.b, t),
-            );
-
-            base_color = Color::new(
-                lerp(day_color.r, night_color.r, day_time),
-                lerp(day_color.g, night_color.g, day_time),
-                lerp(day_color.b, night_color.b, day_time),
-            );
+            // Z is dominant
+            if direction.z > 0.0 {
+                // Front face (+Z)
+                let u = (direction.x / abs_z + 1.0) * 0.5;
+                let v = (-direction.y / abs_z + 1.0) * 0.5;
+                (u, v, &self.front)
+            } else {
+                // Back face (-Z)
+                let u = (-direction.x / abs_z + 1.0) * 0.5;
+                let v = (-direction.y / abs_z + 1.0) * 0.5;
+                (u, v, &self.back)
+            }
+        };
+        
+        // Sample the texture
+        let mut base_color = texture.sample(u, v);
+        
+        // Apply day/night tinting
+        // During day (day_time = 0), keep original colors
+        // During night (day_time = 1), darken and add blue tint
+        if day_time > 0.0 {
+            let night_tint = Color::new(0.1, 0.1, 0.2) * day_time;
+            let darken = 1.0 - (day_time * 0.8); // Darken by up to 80% at full night
+            base_color = base_color * darken + night_tint;
         }
 
         // --- Draw VISIBLE SUN and MOON in the skybox ---
